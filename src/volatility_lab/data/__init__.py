@@ -1,4 +1,4 @@
-"""Data acquisition, validation, preprocessing, and storage package."""
+"""Data acquisition, validation, preprocessing, storage, and real-time streaming package."""
 
 from volatility_lab.data.providers.base import MarketDataProvider
 from volatility_lab.data.providers.yahoo import YahooFinanceProvider
@@ -8,6 +8,11 @@ from volatility_lab.data.validation import DataValidator, ValidationReport
 from volatility_lab.data.preprocessing import DataPreprocessor
 from volatility_lab.data.storage import ParquetStorageManager
 from volatility_lab.data.ingestion import DataIngestionPipeline
+from volatility_lab.data.realtime import (
+    RealTimeVolatilityEngine,
+    LiveStreamingSimulator,
+    compute_realtime_forecast_cones,
+)
 
 __all__ = [
     "MarketDataProvider",
@@ -19,4 +24,7 @@ __all__ = [
     "DataPreprocessor",
     "ParquetStorageManager",
     "DataIngestionPipeline",
+    "RealTimeVolatilityEngine",
+    "LiveStreamingSimulator",
+    "compute_realtime_forecast_cones",
 ]
