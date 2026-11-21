@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  volatility-lab:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: volatility_forecasting_lab
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+      - ./experiments:/app/experiments
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+    restart: unless-stopped

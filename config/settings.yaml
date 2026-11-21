@@ -1,0 +1,42 @@
+system:
+  project_name: "Volatility Forecasting Lab"
+  version: "1.0.0"
+  random_seed: 42
+  log_level: "INFO"
+
+data:
+  default_ticker: "^NSEI"
+  supported_instruments:
+    indian_indices: ["^NSEI", "^NSEBANK", "^BSESN"]
+    us_indices: ["^GSPC", "^IXIC", "^DJI", "^RUT"]
+    crypto: ["BTC-USD", "ETH-USD"]
+  timezone: "Asia/Kolkata"
+  trading_days_per_year: 252
+  storage:
+    raw_dir: "data/raw"
+    processed_dir: "data/processed"
+    features_dir: "data/features"
+    predictions_dir: "data/predictions"
+
+estimators:
+  historical_windows: [5, 10, 20, 30, 60, 90]
+  ewma_lambda: 0.94
+  parkinson: true
+  garman_klass: true
+  rogers_satchell: true
+
+forecasting:
+  horizons: [1, 5, 10, 20]
+  target_column: "realized_variance"
+  annualize: true
+
+validation:
+  scheme: "expanding"
+  initial_train_size: 1260
+  test_size: 252
+  embargo_pct: 0.01
+
+risk:
+  confidence_levels: [0.90, 0.95, 0.99]
+  lookback: 252
+  var_methods: ["historical", "parametric_normal", "parametric_student_t", "ewma", "garch"]
