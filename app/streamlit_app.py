@@ -40,6 +40,7 @@ from volatility_lab.econometrics.egarch import EGARCHModel
 from volatility_lab.econometrics.gjr_garch import GJRGARCHModel
 from volatility_lab.econometrics.har_rv import HARRVModel
 from volatility_lab.forecasting.prediction import MultiModelForecaster
+from volatility_lab.forecasting.signals import InstitutionalSignalEngine
 from volatility_lab.evaluation.metrics import compute_all_metrics
 from volatility_lab.evaluation.statistical_tests import diebold_mariano_test
 from volatility_lab.regimes.detection import StatisticalRegimeDetector, GMMRegimeDetector
@@ -72,6 +73,61 @@ st.markdown("""
     .metric-card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; }
 </style>
 """, unsafe_allow_html=True)
+
+
+def render_institutional_signal_box(sig: Dict[str, Any]):
+    """Renders high-visibility Dark Green (BUY) and Dark Red (SELL) decision confirmation box."""
+    pills_html = []
+    for item in sig.get("checklist", []):
+        icon = "✓" if item["passed"] else "✕"
+        color = "#10b981" if item["passed"] else "#f87171"
+        bg = "rgba(16, 185, 129, 0.15)" if item["passed"] else "rgba(239, 68, 68, 0.20)"
+        pills_html.append(
+            f'<div style="background: {bg}; border: 1px solid {color}; border-radius: 6px; padding: 5px 11px; font-size: 11px; color: #ffffff; display: inline-flex; align-items: center; gap: 6px;">'
+            f'<strong style="color: {color}; font-size: 13px;">{icon}</strong> <span>{item["label"]}:</span> <span style="color: rgba(255, 255, 255, 0.85); font-weight: 600;">{item["detail"]}</span>'
+            f'</div>'
+        )
+    pills_joined = "".join(pills_html)
+
+    html = f"""
+    <div style="background: {sig['bg_gradient']}; border: 2.5px solid {sig['border_color']}; border-radius: 14px; padding: 20px 26px; margin: 18px 0 24px 0; box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.45);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 30px;">{sig['status_icon']}</span>
+          <span style="font-size: 22px; font-weight: 800; color: {sig['text_color']}; letter-spacing: 0.8px;">{sig['badge']}</span>
+        </div>
+        <div style="background: rgba(0, 0, 0, 0.45); border: 1.5px solid {sig['border_color']}; padding: 6px 16px; border-radius: 20px; font-weight: 800; color: #ffffff; font-size: 13px; letter-spacing: 0.5px;">
+          CONFIDENCE: {sig['confidence_score']:.0f}%
+        </div>
+      </div>
+      <p style="font-size: 14.5px; color: rgba(255, 255, 255, 0.95); margin-bottom: 16px; line-height: 1.5; font-weight: 500;">
+        {sig['summary']}
+      </p>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;">
+        <div style="background: rgba(0, 0, 0, 0.35); padding: 12px 14px; border-radius: 8px; border-left: 3.5px solid {sig['border_color']};">
+          <div style="font-size: 10px; color: rgba(255, 255, 255, 0.6); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Actionable Verdict</div>
+          <div style="font-size: 12.5px; font-weight: 800; color: #ffffff; margin-top: 4px;">{sig['action']}</div>
+        </div>
+        <div style="background: rgba(0, 0, 0, 0.35); padding: 12px 14px; border-radius: 8px; border-left: 3.5px solid {sig['border_color']};">
+          <div style="font-size: 10px; color: rgba(255, 255, 255, 0.6); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Dynamic Stop-Loss (95% VaR)</div>
+          <div style="font-size: 15px; font-weight: 800; color: #ffffff; margin-top: 3px;">{sig['stop_loss']:,.2f}</div>
+        </div>
+        <div style="background: rgba(0, 0, 0, 0.35); padding: 12px 14px; border-radius: 8px; border-left: 3.5px solid {sig['border_color']};">
+          <div style="font-size: 10px; color: rgba(255, 255, 255, 0.6); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Target Objective (2:1 RR)</div>
+          <div style="font-size: 15px; font-weight: 800; color: #ffffff; margin-top: 3px;">{sig['target_price']:,.2f}</div>
+        </div>
+        <div style="background: rgba(0, 0, 0, 0.35); padding: 12px 14px; border-radius: 8px; border-left: 3.5px solid {sig['border_color']};">
+          <div style="font-size: 10px; color: rgba(255, 255, 255, 0.6); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Vol-Targeted Sizing</div>
+          <div style="font-size: 15px; font-weight: 800; color: #ffffff; margin-top: 3px;">{sig['vol_weight']}% Weight</div>
+        </div>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        {pills_joined}
+      </div>
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
+
 
 
 # ==============================================================================
@@ -230,6 +286,13 @@ if operating_mode == "🔴 Live Real-Time Streaming":
     
     jump_status = "Normal Flow" if jump_val < 15.0 else ("Moderate Jump" if jump_val < 40.0 else "🚨 CRITICAL SHOCK")
     kpi6.metric("Jump Component", f"{jump_val:.1f}%", jump_status)
+
+    # ---------------- INSTITUTIONAL SIGNAL CONFIRMATION BOX ----------------
+    live_df["sma_9"] = live_df["Close"].rolling(window=9, min_periods=1).mean()
+    curr_bar = live_df.iloc[-1]
+    prev_bar = live_df.iloc[-2] if len(live_df) > 1 else curr_bar
+    signal_state = InstitutionalSignalEngine.evaluate(curr_bar, prev_bar, history_df=live_df)
+    render_institutional_signal_box(signal_state)
 
     # ---------------- LIVE TABS ----------------
     ltab1, ltab2, ltab3, ltab4, ltab5 = st.tabs([
@@ -547,6 +610,19 @@ else:
     col3.metric("EWMA Vol (λ=0.94)", f"{ewma_ann:.2f}%")
     col4.metric("Volatility Regime", curr_regime)
     col5.metric("Data Sample", f"{len(df):,} Days", f"{df.index[0].strftime('%Y')} - {df.index[-1].strftime('%Y')}")
+
+    # ---------------- INSTITUTIONAL SIGNAL CONFIRMATION BOX ----------------
+    df["sma_9"] = df["Close"].rolling(window=9, min_periods=1).mean()
+    df["ewma_vol_ann"] = ewma_ann
+    df["garman_klass_ann"] = hist_20_ann
+    df["jump_component"] = 0.05
+    df["var_95_pct"] = (ewma_ann * 1.645) / np.sqrt(252.0)
+    df["volatility_regime"] = regime_series.iloc[-1]
+
+    h_curr = df.iloc[-1]
+    h_prev = df.iloc[-2] if len(df) > 1 else h_curr
+    h_sig = InstitutionalSignalEngine.evaluate(h_curr, h_prev, history_df=df)
+    render_institutional_signal_box(h_sig)
 
     # ----------------- MAIN NAVIGATION TABS -----------------
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([

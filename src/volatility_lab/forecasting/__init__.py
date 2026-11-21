@@ -1,4 +1,4 @@
-"""Volatility forecasting and horizon management package."""
+"""Volatility forecasting, horizon management, and institutional signal engine package."""
 
 from volatility_lab.forecasting.horizons import (
     STANDARD_HORIZONS,
@@ -9,6 +9,7 @@ from volatility_lab.forecasting.horizons import (
 from volatility_lab.forecasting.uncertainty import ForecastUncertaintyEstimator
 from volatility_lab.forecasting.prediction import MultiModelForecaster
 from volatility_lab.forecasting.pipeline import VolatilityForecastingPipeline
+from volatility_lab.forecasting.signals import InstitutionalSignalEngine
 
 __all__ = [
     "STANDARD_HORIZONS",
@@ -18,4 +19,5 @@ __all__ = [
     "ForecastUncertaintyEstimator",
     "MultiModelForecaster",
     "VolatilityForecastingPipeline",
+    "InstitutionalSignalEngine",
 ]
